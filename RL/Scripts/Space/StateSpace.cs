@@ -17,7 +17,7 @@ public class StateSpace: ISpace
         gameState = new GameState();
     }
 
-    public void SetState(int player) {
+    public void SetValues(int player) {
         var myCScript = UFE.GetControlsScript(player);
         var opCScript = UFE.GetControlsScript(player == 1 ? 2 : 1);
         if (myCScript == null || opCScript == null) return;

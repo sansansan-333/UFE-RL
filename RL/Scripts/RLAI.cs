@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UFE3D;
 using UnityEngine;
+using System.Linq;
+using System;
 
 // gets input from ALAgent and sends them to UFE 
 public class RLAI : BaseAI
@@ -12,6 +14,12 @@ public class RLAI : BaseAI
     public int opponent;
     public ControlsScript cScript;
     public ControlsScript opCScript;
+
+    // Input
+    private int moveTick = 0;
+    private ButtonPress[] currentFrameInput;
+    private bool moveFinished = true;
+    private int c = 0;
 
     public override void Initialize(IEnumerable<InputReferences> inputReferences) {
         base.Initialize(inputReferences);
@@ -28,7 +36,7 @@ public class RLAI : BaseAI
     }
 
     
-    public override void DoUpdate() {
+    public override void DoFixedUpdate() {
         if (cScript == null) {
             cScript = UFE.GetControlsScript(player);
         }
@@ -37,35 +45,51 @@ public class RLAI : BaseAI
         }
         if (cScript == null || opCScript == null) return;
 
-        brain.RequestDecision();
-
-        // now new actions are available
-        // use them to decide input
+        // decide input
+        currentFrameInput = ActionSpace.simulatedInput[brain.action.move][moveTick];
         this.inputs.Clear();
         foreach (InputReferences input in this.inputReferences) {
             this.inputs[input] = this.ReadInput(input);
         }
+
+        // step move tick
+        // mark finished if tick reaches the end of current move
+        moveTick++;
+        if (moveTick >= ActionSpace.simulatedInput[brain.action.move].GetLength(0)) {
+            moveFinished = true;
+            moveTick = 0;
+        }
+
+        // request decision if current move has finished
+        if (moveFinished) {
+            brain.RequestDecision();
+            moveFinished = false;
+        }
     }
 
     public override InputEvents ReadInput(InputReferences inputReference) {
-        if (!ActionSpace.usedButtons.Contains(inputReference.engineRelatedButton)) return InputEvents.Default;
-
         if (inputReference.inputType == InputType.Button) {
-            if (brain.action.inputs[inputReference.engineRelatedButton] == 1) return new InputEvents(true);
+            foreach(var button in currentFrameInput) {
+                if (button == inputReference.engineRelatedButton) return new InputEvents(true);
+            }
         }
 
         else if (inputReference.inputType == InputType.VerticalAxis) {
             float axis = 0;
-            if (brain.action.inputs[ButtonPress.Up] == 1) axis += 1;
-            if (brain.action.inputs[ButtonPress.Down] == 1) axis -= 1;
+            foreach(var button in currentFrameInput) {
+                if (button == ButtonPress.Up) axis += 1;
+                if (button == ButtonPress.Down) axis -= 1;
+            }
 
             return new InputEvents(axis);
         }
 
         else if (inputReference.inputType == InputType.HorizontalAxis) {
             float axis = 0;
-            if (brain.action.inputs[ButtonPress.Forward] == 1) axis += 1;
-            if (brain.action.inputs[ButtonPress.Back] == 1) axis -= 1;
+            foreach (var button in currentFrameInput) {
+                if (button == ButtonPress.Forward) axis += 1;
+                if (button == ButtonPress.Back) axis -= 1;
+            }
 
             // (mirror == 1) -> character faces to the left
             // (mirror == -1) -> character faces to the right

@@ -1,5 +1,6 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,6 +8,8 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+
+using AvailableMove = ActionSpace.AvailableMove;
 
 // implements communication between ML Agents python and Unity
 public class RLAgent : Agent
@@ -67,7 +70,7 @@ public class RLAgent : Agent
     public override void CollectObservations(VectorSensor sensor) {
         if (rlAI == null) return;
 
-        observation.SetState(rlAI.player);
+        observation.SetValues(rlAI.player);
 
         if(inference) {
             string inputName = "dense_input";
@@ -86,37 +89,19 @@ public class RLAgent : Agent
 
     public override void OnActionReceived(ActionBuffers actions) {
         if(inference) {
-            // get output of Q-network and translate it to action
+            // get output from Q-network and translate it to action
             var result = session.Run(modelInputs).ToList()[0];
             float[] modelOutput = result.AsTensor<float>().ToArray();
             float QMax = modelOutput.Max();
-            if(modelOutput[0] == QMax) { // no input
-                for (int i = 0; i < ActionSpace.usedButtons.Count; i++) {
-                    action.inputs[ActionSpace.usedButtons[i]] = 0;
-                }
-            } else {
-                for (int i = 0; i < ActionSpace.usedButtons.Count; i++) {
-                    if (modelOutput[i + 1] >= QMax - deltaOutputRange) action.inputs[ActionSpace.usedButtons[i]] = 1; // use i+1 because the first item represents noInput
-                    else action.inputs[ActionSpace.usedButtons[i]] = 0;
-                }
-            }
-            
+            action.move = (AvailableMove)modelOutput.ToList().IndexOf(QMax);
         } else {
-            if(actions.ContinuousActions[0] == 1) { // no input
-                for (int i = 0; i < ActionSpace.usedButtons.Count; i++) {
-                    action.inputs[ActionSpace.usedButtons[i]] = 0;
-                }
-            } else {
-                for (int i = 0; i < ActionSpace.usedButtons.Count; i++) {
-                    action.inputs[ActionSpace.usedButtons[i]] = (int)actions.ContinuousActions[i + 1]; // use i+1 because the first item represents noInput
-                }
-            }
-            
+            action.move = ActionSpace.GetMoveFromTensor(actions.ContinuousActions.ToArray());
 
-            // alive >> alive 
-            // alive >> dead <- win
-            // dead >> alive
-            // dead >> dead
+            // check if someone won
+            /* alive >> alive 
+             * alive >> dead <- win
+             * dead >> alive
+             * dead >> dead */
             if (wasSomeoneDead) {
                 win = 0;
             } else {
@@ -128,6 +113,7 @@ public class RLAgent : Agent
                     win = 0;
                 }
             }
+
             SetReward(CalculateReward());
             if (win != 0) {
                 EndEpisode();
@@ -142,7 +128,7 @@ public class RLAgent : Agent
 
         float curHp = (float)rlAI.cScript.currentLifePoints;
         float curOpHp = (float)rlAI.opCScript.currentLifePoints;
-        float reward_hp = ((curHp - prevHP) - (curOpHp - prevOpHP)) / StateSpace.PlayerState.maxHP;
+        float reward_hp = ((curHp - prevHP) - (curOpHp - prevOpHP)) / StateSpace.PlayerState.maxHP * 5f;
         if(reward_hp < 1) {
             reward += reward_hp;
         }
