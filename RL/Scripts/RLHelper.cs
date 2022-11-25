@@ -28,7 +28,7 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
 
     void Update()
     {
-        // For battles to continue automatically, select "Repeat Battle" right after the battle ends
+        // For battles to continue automatically, click "Repeat Battle" right after the battle ends
         if(UFE.currentScreen is VersusModeAfterBattleScreen) {
             var repeatBattleButton = GameObject.Find("Button_Repeat_Battle");
             if (repeatBattleButton != null) repeatBattleButton.GetComponent<Button>().onClick.Invoke();

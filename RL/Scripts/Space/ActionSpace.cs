@@ -14,12 +14,12 @@ public class ActionSpace: ISpace
         Neutral,
         Forward,
         Back,
-        Up,
-        Down,
-        Forward_Up,
-        Forward_Down,
-        Back_Up,
-        Back_Down,
+        Jump_Vertical,
+        Jump_Forward,
+        Jump_Backward,
+        Crouch_Down,
+        Crouch_Forward,
+        Crouch_Back,
 
         Punch_Standing_Light,
         Punch_Standing_Heavy,
@@ -58,21 +58,21 @@ public class ActionSpace: ISpace
                 }
             }
         },
-        {   AvailableMove.Up,
+        {   AvailableMove.Jump_Vertical,
             new ButtonPress[1][] {
                 new ButtonPress[1] {
                     ButtonPress.Up
                 }
             }
         },
-        {   AvailableMove.Down,
+        {   AvailableMove.Crouch_Down,
             new ButtonPress[1][] {
                 new ButtonPress[1] {
                 ButtonPress.Back
             }
             }
         },
-        {   AvailableMove.Forward_Up,
+        {   AvailableMove.Jump_Forward,
             new ButtonPress[1][] {
                 new ButtonPress[2] {
                     ButtonPress.Forward,
@@ -80,7 +80,7 @@ public class ActionSpace: ISpace
                 }
             }
         },
-        {   AvailableMove.Forward_Down,
+        {   AvailableMove.Crouch_Forward,
             new ButtonPress[1][] {
                 new ButtonPress[2] {
                     ButtonPress.Forward,
@@ -88,7 +88,7 @@ public class ActionSpace: ISpace
                 }
             }
         },
-        {   AvailableMove.Back_Up,
+        {   AvailableMove.Jump_Backward,
             new ButtonPress[1][] {
                 new ButtonPress[2] {
                     ButtonPress.Back,
@@ -96,7 +96,7 @@ public class ActionSpace: ISpace
                 }
             }
         },
-        {   AvailableMove.Back_Down,
+        {   AvailableMove.Crouch_Back,
             new ButtonPress[1][] {
                 new ButtonPress[2] {
                     ButtonPress.Back,

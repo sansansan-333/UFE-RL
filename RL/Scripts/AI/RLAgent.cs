@@ -11,7 +11,7 @@ using UnityEngine;
 
 using AvailableMove = ActionSpace.AvailableMove;
 
-// implements communication between ML Agents python and Unity
+// implements communication between python and Unity
 public class RLAgent : Agent
 {
     private StateSpace observation;
