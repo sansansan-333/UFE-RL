@@ -7,7 +7,7 @@ using UFE3D;
 using System.Linq;
 
 using FrameData = RLGameRecord.FrameData;
-using AvailableMove = ActionSpace.AvailableMove;
+using AIMove = ActionSpace.AIMove;
 
 public class RLGameRecorder : GameRecorder
 {
@@ -17,7 +17,6 @@ public class RLGameRecorder : GameRecorder
     protected override void InitializeRecord(int frameRoundStarted) {
         this.frameRoundStarted = frameRoundStarted;
 
-        Debug.Log("overriden init");
         record = new RLGameRecord();
         record.UUID = Guid.NewGuid().ToString();
         record.date = DateTime.Now.ToString();
@@ -26,7 +25,6 @@ public class RLGameRecorder : GameRecorder
     }
 
     protected override void RecordCurrentFrame(int currentFrame) {
-        Debug.Log("overriden record current");
         var history = UFE.fluxCapacitor.History;
         var pair = new KeyValuePair<FluxStates, FluxFrameInput>();
 
@@ -63,12 +61,22 @@ public class RLGameRecorder : GameRecorder
             frameAdvantage = UFEUtility.CalcFrameAdvantage(2),
         };
 
-        frame.p1Action = new RLGameRecord.Action {
-            move = (int)GetCurrentAction(1)
-        };
-        frame.p2Action = new RLGameRecord.Action {
-            move = (int)GetCurrentAction(2)
-        };
+        frame.p1Action = RLUtility.GetCurrentMove(1).ToString();
+        frame.p2Action = RLUtility.GetCurrentMove(2).ToString();
+
+        StateSpace state = new StateSpace();
+        state.SetValues(1);
+        frame.p1StateVector = state.GetTensor();
+        state.SetValues(2);
+        frame.p2StateVector = state.GetTensor();
+
+        int actionSize = Enum.GetNames(typeof(AIMove)).Length;
+        float[] p1ActionVector = new float[actionSize];
+        float[] p2ActionVector = new float[actionSize];
+        p1ActionVector[(int)RLUtility.GetCurrentMove(1)] = 1;
+        p2ActionVector[(int)RLUtility.GetCurrentMove(2)] = 1;
+        frame.p1ActionVector = p1ActionVector;
+        frame.p2ActionVector = p2ActionVector;
 
         record.frames.Add(frame);
     }
@@ -85,12 +93,5 @@ public class RLGameRecorder : GameRecorder
         else {
             Debug.LogError("Couldn't save a game recording because the folder does not exist.");
         }
-    }
-
-    // このフレームに行ったアクションがあればそれを返す、なければニュートラルを返す
-    // あくまでし始めたフレームでしかそのアクションを返さない。ただし移動アクションは各フレームでそのアクションを行ったものと捉える
-    // ex. jump - neutral - neutral - neutral - ... - neutral(land) - forward - forward - ...
-    private AvailableMove GetCurrentAction(int player) {
-        return AvailableMove.Neutral;
     }
 }

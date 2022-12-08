@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq;
 
 using UFE3D;
 
@@ -9,6 +10,8 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
 {
     public RLAgent p1Brain { get; private set; }
     public RLAgent p2Brain { get; private set; }
+
+    private DataLogger logger = new DataLogger();
 
     void Awake()
     {
@@ -26,7 +29,7 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
         }
     }
 
-    void Update()
+    void FixedUpdate()
     {
         // For battles to continue automatically, click "Repeat Battle" right after the battle ends
         if(UFE.currentScreen is VersusModeAfterBattleScreen) {
@@ -38,7 +41,7 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
         var p1 = UFE.GetPlayer1ControlsScript();
         var p2 = UFE.GetPlayer2ControlsScript();
         if(p1 != null) {
-            // Debug.Log(p1.currentState);
+
         }
         if(p2 != null) {
             // Debug.Log(p2.normalizedDistance);

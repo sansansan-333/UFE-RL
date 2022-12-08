@@ -21,8 +21,13 @@ public class RLGameRecord
         public GameState gameState;
         public CharacterState p1GameState;
         public CharacterState p2GameState;
-        public Action p1Action;
-        public Action p2Action;
+        public string p1Action;
+        public string p2Action;
+
+        public float[] p1StateVector;
+        public float[] p2StateVector;
+        public float[] p1ActionVector;
+        public float[] p2ActionVector;
     }
 
     [Serializable]
@@ -37,10 +42,5 @@ public class RLGameRecord
         public bool isJumping;
         public bool isBlocking;
         public int frameAdvantage;
-    }
-
-    [Serializable]
-    public class Action {
-        public int move;
     }
 }

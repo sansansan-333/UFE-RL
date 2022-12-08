@@ -9,14 +9,13 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 
-using AvailableMove = ActionSpace.AvailableMove;
+using AIMove = ActionSpace.AIMove;
 
-// implements communication between python and Unity
 public class RLAgent : Agent
 {
     private StateSpace observation;
-
-    public ActionSpace action { get; private set; }
+    public ActionSpace action;
+    public bool isNewActionSet { get; private set; }
     private RLAI rlAI;
 
     // rewards
@@ -34,6 +33,8 @@ public class RLAgent : Agent
 
     // debug
     private DataLogger logger = new DataLogger();
+    private List<AIMove> moveBuffer;
+    int i = 0;
 
     public void SetRLAI(RLAI rlAI) {
         this.rlAI = rlAI;
@@ -43,6 +44,7 @@ public class RLAgent : Agent
     {
         observation = new StateSpace();
         action = new ActionSpace();
+        isNewActionSet = false;
 
         Academy.Instance.OnEnvironmentReset += EnvironmentReset;
 
@@ -57,6 +59,60 @@ public class RLAgent : Agent
                 Debug.LogWarning("Model was not found at the specified path. The game continues without sending any output to the agent.");
             }
         }
+
+        moveBuffer = new List<AIMove> {
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+            AIMove.Forward,
+
+            AIMove.Jump_Forward,
+            AIMove.Kick_Jumping_Heavy
+        };
     }
 
     public void EnvironmentReset() {
@@ -67,10 +123,25 @@ public class RLAgent : Agent
 
     }
 
+    private void FixedUpdate() {
+        /*
+        if (rlAI != null && rlAI.IsWaitingForDecision()) {
+            var validatedMoves = RLUtility.ValidateAIMoves(2);
+            logger.Log("RLAgent: ");
+            logger.LogArray(validatedMoves);
+            var storedMove = rlAI.cScript.storedMove;
+            if (storedMove != null) Debug.Log("stored: " + storedMove.moveName);
+            RequestDecision();
+        } else {
+            isNewActionSet = false;
+        }
+        */
+    }
+
     public override void CollectObservations(VectorSensor sensor) {
         if (rlAI == null) return;
 
-        observation.SetValues(rlAI.player);
+        observation = rlAI.storedObservation;
 
         if(inference) {
             string inputName = "dense_input";
@@ -93,9 +164,17 @@ public class RLAgent : Agent
             var result = session.Run(modelInputs).ToList()[0];
             float[] modelOutput = result.AsTensor<float>().ToArray();
             float QMax = modelOutput.Max();
-            action.move = (AvailableMove)modelOutput.ToList().IndexOf(QMax);
+            action.move = (AIMove)modelOutput.ToList().IndexOf(QMax);
         } else {
             action.move = ActionSpace.GetMoveFromTensor(actions.ContinuousActions.ToArray());
+            /*
+            if(i < moveBuffer.Count) {
+                action.move = moveBuffer[i];
+                i++;
+            } else {
+                action.move = AIMove.Neutral;
+            }
+            */
 
             // check if someone won
             /* alive >> alive 

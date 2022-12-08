@@ -1,9 +1,11 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UFE3D;
 using UnityEngine;
 using System.Linq;
 using System;
+
+using AIMove = ActionSpace.AIMove;
 
 // gets input from ALAgent and sends them to UFE 
 public class RLAI : BaseAI
@@ -15,11 +17,19 @@ public class RLAI : BaseAI
     public ControlsScript cScript;
     public ControlsScript opCScript;
 
-    // Input
-    private int moveTick = 0;
+    // Move
+    private int inputTick = 0;
     private ButtonPress[] currentFrameInput;
-    private bool moveFinished = true;
-    private int c = 0;
+    private AIMove currentMove = AIMove.Neutral;
+    private AIMove? storedMove = null;
+
+    // decision
+    public static readonly int reactionSpeed = 13;
+    private bool decisionRequested = false;
+    public StateSpace storedObservation { get; private set; }
+
+    // debug
+    private DataLogger logger = new DataLogger();
 
     public override void Initialize(IEnumerable<InputReferences> inputReferences) {
         base.Initialize(inputReferences);
@@ -33,38 +43,68 @@ public class RLAI : BaseAI
             opponent = 1;
         }
         brain.SetRLAI(this);
+
+        storedObservation = new StateSpace();
     }
 
     
     public override void DoFixedUpdate() {
-        if (cScript == null) {
-            cScript = UFE.GetControlsScript(player);
-        }
-        if (opCScript == null) {
-            opCScript = UFE.GetControlsScript(opponent);
-        }
+        if (UFE.config.lockInputs || UFE.config.lockMovements) return;
+
+        if (cScript == null) cScript = UFE.GetControlsScript(player);
+        if (opCScript == null) opCScript = UFE.GetControlsScript(opponent);
         if (cScript == null || opCScript == null) return;
 
+        // get new move if anything
+        if (decisionRequested) {
+            storedMove = brain.action.move;
+        }
+
+        // transition to stored move if possible
+        if(storedMove is AIMove nextMove) {
+            if(RLUtility.ValidateAIMove(player, nextMove) == 1) {
+                currentMove = nextMove;
+                storedMove = null;
+                inputTick = 0;
+            }
+        }
+
         // decide input
-        currentFrameInput = ActionSpace.simulatedInput[brain.action.move][moveTick];
+        if (0 <= inputTick && inputTick < ActionSpace.simulatedInput[currentMove].GetLength(0)) {
+            currentFrameInput = ActionSpace.simulatedInput[currentMove][inputTick];
+        } else {
+            currentFrameInput = ActionSpace.simulatedInput[AIMove.Neutral][0];
+        }
         this.inputs.Clear();
         foreach (InputReferences input in this.inputReferences) {
             this.inputs[input] = this.ReadInput(input);
         }
+        inputTick++;
 
-        // step move tick
-        // mark finished if tick reaches the end of current move
-        moveTick++;
-        if (moveTick >= ActionSpace.simulatedInput[brain.action.move].GetLength(0)) {
-            moveFinished = true;
-            moveTick = 0;
-        }
-
-        // request decision if current move has finished
-        if (moveFinished) {
+        // request decision
+        if (ReadyToDecideNextMove()) {
             brain.RequestDecision();
-            moveFinished = false;
+            storedObservation.SetValues(player);
+            decisionRequested = true;
+        } else {
+            decisionRequested = false;
         }
+    }
+
+    private bool ReadyToDecideNextMove() {
+        // if game has not started yet
+        if (UFE.config.lockInputs || UFE.config.lockMovements || cScript == null || opCScript == null) return false;
+
+        // if storedMove is not used yet
+        if (storedMove != null) return false;
+
+        if (RLUtility.IsBasicMove(RLUtility.GetCurrentMove(player))) {
+            return true;
+        } else if(cScript.currentMove != null && reactionSpeed - cScript.currentMove.currentFrame < 0) {
+            return true;
+        }
+
+        return false;
     }
 
     public override InputEvents ReadInput(InputReferences inputReference) {
