@@ -13,6 +13,8 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
 
     private DataLogger logger = new DataLogger();
 
+    public GameHistory history;
+
     void Awake()
     {
         p1Brain = GameObject.Find("p1Dammy").GetComponent<RLAgent>();
@@ -27,11 +29,13 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
                 Destroy(p2Brain.gameObject);
             }
         }
+
+        history = gameObject.GetComponent<GameHistory>();
     }
 
     void FixedUpdate()
     {
-        // For battles to continue automatically, click "Repeat Battle" right after the battle ends
+        // click "Repeat Battle" button right after the battle ends for the battle to continue automatically
         if(UFE.currentScreen is VersusModeAfterBattleScreen) {
             var repeatBattleButton = GameObject.Find("Button_Repeat_Battle");
             if (repeatBattleButton != null) repeatBattleButton.GetComponent<Button>().onClick.Invoke();
@@ -41,7 +45,7 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
         var p1 = UFE.GetPlayer1ControlsScript();
         var p2 = UFE.GetPlayer2ControlsScript();
         if(p1 != null) {
-
+            // Debug.Log(history.p1State.crouchingBackFrames);
         }
         if(p2 != null) {
             // Debug.Log(p2.normalizedDistance);

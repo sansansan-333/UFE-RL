@@ -17,7 +17,7 @@ public class RLAI : BaseAI
     public ControlsScript cScript;
     public ControlsScript opCScript;
 
-    // Move
+    // move
     private int inputTick = 0;
     private ButtonPress[] currentFrameInput;
     private AIMove currentMove = AIMove.Neutral;
@@ -55,7 +55,7 @@ public class RLAI : BaseAI
         if (opCScript == null) opCScript = UFE.GetControlsScript(opponent);
         if (cScript == null || opCScript == null) return;
 
-        // get new move if anything
+        // get new move if any
         if (decisionRequested) {
             storedMove = brain.action.move;
         }

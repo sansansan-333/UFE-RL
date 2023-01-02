@@ -48,14 +48,26 @@ public class ActionSpace: ISpace
             }
         },
         {   AIMove.Forward,
-            new ButtonPress[1][] {
+            new ButtonPress[3][] {
+                new ButtonPress[1] {
+                    ButtonPress.Forward
+                },
+                new ButtonPress[1] {
+                    ButtonPress.Forward
+                },
                 new ButtonPress[1] {
                     ButtonPress.Forward
                 }
             }
         },
         {   AIMove.Back,
-            new ButtonPress[1][] {
+            new ButtonPress[3][] {
+                new ButtonPress[1] {
+                    ButtonPress.Back
+                },
+                new ButtonPress[1] {
+                    ButtonPress.Back
+                },
                 new ButtonPress[1] {
                     ButtonPress.Back
                 }
@@ -69,10 +81,16 @@ public class ActionSpace: ISpace
             }
         },
         {   AIMove.Crouch,
-            new ButtonPress[1][] {
+            new ButtonPress[3][] {
                 new ButtonPress[1] {
-                ButtonPress.Back
-            }
+                    ButtonPress.Down
+                },
+                new ButtonPress[1] {
+                    ButtonPress.Down
+                },
+                new ButtonPress[1] {
+                    ButtonPress.Down
+                }
             }
         },
         {   AIMove.Jump_Forward,
@@ -92,7 +110,15 @@ public class ActionSpace: ISpace
             }
         },
         {   AIMove.Crouch_Back,
-            new ButtonPress[1][] {
+            new ButtonPress[3][] {
+                new ButtonPress[2] {
+                    ButtonPress.Back,
+                    ButtonPress.Down
+                },
+                new ButtonPress[2] {
+                    ButtonPress.Back,
+                    ButtonPress.Down
+                },
                 new ButtonPress[2] {
                     ButtonPress.Back,
                     ButtonPress.Down
@@ -258,12 +284,16 @@ public class ActionSpace: ISpace
     }
 
     public float[] GetTensor() {
+        return GetTensorFromMove(move);
+    }
+
+    public static float[] GetTensorFromMove(AIMove aiMove) {
         var tensor = new List<float>();
-        foreach(AIMove move in Enum.GetValues(typeof(AIMove))) {
-            if (move == this.move) tensor.Add(1);
+        foreach (AIMove move in Enum.GetValues(typeof(AIMove))) {
+            if (move == aiMove) tensor.Add(1);
             else tensor.Add(0);
         }
-        
+
         return tensor.ToArray();
     }
 
@@ -273,5 +303,9 @@ public class ActionSpace: ISpace
         }
 
         return AIMove.Neutral;
+    }
+
+    public int GetLength() {
+        return Enum.GetValues(typeof(AIMove)).Length;
     }
 }

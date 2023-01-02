@@ -19,17 +19,17 @@ public class RLAgent : Agent
     private RLAI rlAI;
 
     // rewards
-    private float prevHP = StateSpace.PlayerState.maxHP;
-    private float prevOpHP = StateSpace.PlayerState.maxHP;
-    private bool wasSomeoneDead = false; // keep track that either the player or the opponent was dead in the last frame
-    private int win = 0;
+    private readonly float initialHP = 1000;
+    private readonly float maxDamage = 90;
+    private float prevHP;
+    private float prevOpHP;
+    private bool episodeEndFlag;
 
     // inference
     private bool inference;
     private InferenceSession session;
     [PathAttribute] public string modelPath;
     private List<NamedOnnxValue> modelInputs;
-    private static readonly float deltaOutputRange = 0.001f;
 
     // debug
     private DataLogger logger = new DataLogger();
@@ -61,57 +61,25 @@ public class RLAgent : Agent
         }
 
         moveBuffer = new List<AIMove> {
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
+            AIMove.Neutral,
             AIMove.Forward,
             AIMove.Forward,
             AIMove.Forward,
             AIMove.Forward,
             AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-            AIMove.Forward,
-
-            AIMove.Jump_Forward,
-            AIMove.Kick_Jumping_Heavy
+            AIMove.Back
         };
     }
 
@@ -120,22 +88,15 @@ public class RLAgent : Agent
     }
 
     public override void OnEpisodeBegin() {
-
+        prevHP = initialHP;
+        prevOpHP = initialHP;
     }
 
     private void FixedUpdate() {
-        /*
-        if (rlAI != null && rlAI.IsWaitingForDecision()) {
-            var validatedMoves = RLUtility.ValidateAIMoves(2);
-            logger.Log("RLAgent: ");
-            logger.LogArray(validatedMoves);
-            var storedMove = rlAI.cScript.storedMove;
-            if (storedMove != null) Debug.Log("stored: " + storedMove.moveName);
-            RequestDecision();
-        } else {
-            isNewActionSet = false;
+        if (rlAI != null && rlAI.cScript != null && rlAI.opCScript != null && !episodeEndFlag) {
+            // episode ends when someone wins
+            episodeEndFlag = rlAI.cScript.isDead || rlAI.opCScript.isDead;
         }
-        */
     }
 
     public override void CollectObservations(VectorSensor sensor) {
@@ -155,6 +116,8 @@ public class RLAgent : Agent
             };
         } else {
             sensor.AddObservation(observation.GetTensor());
+
+            Debug.Log(observation.GetLength());
         }
     }
 
@@ -176,29 +139,11 @@ public class RLAgent : Agent
             }
             */
 
-            // check if someone won
-            /* alive >> alive 
-             * alive >> dead <- win
-             * dead >> alive
-             * dead >> dead */
-            if (wasSomeoneDead) {
-                win = 0;
-            } else {
-                if(rlAI.cScript.isDead) {
-                    win = -1;
-                } else if(rlAI.opCScript.isDead) {
-                    win = 1;
-                } else {
-                    win = 0;
-                }
-            }
-
             SetReward(CalculateReward());
-            if (win != 0) {
+            if (episodeEndFlag) {
                 EndEpisode();
+                episodeEndFlag = false;
             }
-
-            wasSomeoneDead = rlAI.cScript.isDead || rlAI.opCScript.isDead;
         }
     }
 
@@ -207,11 +152,12 @@ public class RLAgent : Agent
 
         float curHp = (float)rlAI.cScript.currentLifePoints;
         float curOpHp = (float)rlAI.opCScript.currentLifePoints;
-        float reward_hp = ((curHp - prevHP) - (curOpHp - prevOpHP)) / StateSpace.PlayerState.maxHP * 5f;
-        if(reward_hp < 1) {
-            reward += reward_hp;
+        float hpReward = ((curHp - prevHP) - (curOpHp - prevOpHP)) / maxDamage;
+
+        if(-1 <= hpReward && hpReward <= 1) { // prevent from getting irregular reward value when winning or losing (workaround)
+            reward += hpReward;
         }
-        reward += win;
+        
 
         prevHP = curHp;
         prevOpHP = curOpHp;

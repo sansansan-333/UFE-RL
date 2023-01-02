@@ -7,13 +7,15 @@ using UFE3D;
 
 public class StateSpace: ISpace
 {
-    public PlayerState selfState;
-    public PlayerState opponentState;
+    public SelfState selfState;
+    public OpponentState opponentState;
     public GameState gameState;
 
+    public readonly int maxMovementFrames = 60;
+
     public StateSpace() {
-        selfState = new PlayerState();
-        opponentState = new PlayerState();
+        selfState = new SelfState();
+        opponentState = new OpponentState();
         gameState = new GameState();
     }
 
@@ -22,20 +24,24 @@ public class StateSpace: ISpace
         var opCScript = UFE.GetControlsScript(player == 1 ? 2 : 1);
         if (myCScript == null || opCScript == null) return;
 
-        selfState.hp = (float)myCScript.currentLifePoints;
-        selfState.isBlocking = myCScript.isBlocking;
-        selfState.isDown = myCScript.currentState == PossibleStates.Down;
+        var history = RLHelper.Instance.history;
+        var playerState = player == 1 ? history.p1State : history.p2State;
+
+        // selfState.hp = (float)myCScript.currentLifePoints;
         selfState.isJumping = (myCScript.currentState == PossibleStates.BackJump || myCScript.currentState == PossibleStates.NeutralJump || myCScript.currentState == PossibleStates.ForwardJump)
                                 && myCScript.currentSubState != SubStates.Stunned;
+        selfState.frameAdvantage = Mathf.Sign(UFEUtility.CalcFrameAdvantage(player));
+        selfState.lastMove = ActionSpace.GetTensorFromMove(RLUtility.GetCurrentMove(player));
+        selfState.movingBackDuration = (float)Mathf.Min(maxMovementFrames, playerState.movingBackFrames) / maxMovementFrames;
+        selfState.movingForwardDuration = (float)Mathf.Min(maxMovementFrames, playerState.movingForwardFrames) / maxMovementFrames;
+        selfState.crouchingBackDuration = (float)Mathf.Min(maxMovementFrames, playerState.crouchingBackFrames) / maxMovementFrames;
 
-        opponentState.hp = (float)opCScript.currentLifePoints;
         opponentState.isBlocking = opCScript.isBlocking;
         opponentState.isDown = opCScript.currentState == PossibleStates.Down;
         opponentState.isJumping = (opCScript.currentState == PossibleStates.BackJump || opCScript.currentState == PossibleStates.NeutralJump || opCScript.currentState == PossibleStates.ForwardJump)
                                 && opCScript.currentSubState != SubStates.Stunned;
 
         gameState.normalizedDistance = (float)myCScript.normalizedDistance;
-        gameState.frameAdvangtage = UFEUtility.CalcFrameAdvantage(player);
     }
 
     public float[] GetTensor() {
@@ -47,33 +53,64 @@ public class StateSpace: ISpace
         return tensor.ToArray();
     }
 
-    public class PlayerState: ISpace {
-        public float hp;
+    public int GetLength() {
+        return selfState.GetLength() + opponentState.GetLength() + gameState.GetLength();
+    }
+
+    public class SelfState: ISpace {
+        public bool isJumping;
+        public float frameAdvantage;
+        public float[] lastMove; // one hot vector
+        public float movingBackDuration;
+        public float movingForwardDuration;
+        public float crouchingBackDuration;
+
+        public float[] GetTensor() {
+            List<float> tensor = new List<float>();
+            tensor.Add(isJumping ? 1 : 0);
+            tensor.Add(frameAdvantage);
+            tensor.AddRange(lastMove);
+            tensor.Add(movingBackDuration);
+            tensor.Add(movingForwardDuration);
+            tensor.Add(crouchingBackDuration);
+
+            return tensor.ToArray();
+        }
+
+        public int GetLength() {
+            return 5 + lastMove.Length;
+        }
+    }
+
+    public class OpponentState: ISpace {
         public bool isDown;
         public bool isJumping;
         public bool isBlocking;
 
-        public static readonly float maxHP = 1000;
-
         public float[] GetTensor() {
-            return new float[] { 
-                hp / maxHP,
+            return new float[] {
                 isDown ? 1 : 0,
                 isJumping ? 1 : 0,
                 isBlocking ? 1 : 0,
             };
         }
+
+        public int GetLength() {
+            return 3;
+        }
     }
 
     public class GameState: ISpace {
         public float normalizedDistance;
-        public float frameAdvangtage;
 
         public float[] GetTensor() {
             return new float[] {
                 normalizedDistance,
-                frameAdvangtage < 0 ? -1 : frameAdvangtage == 0 ? 0 : 1 // -1 or 0 or 1
             };
+        }
+
+        public int GetLength() {
+            return 1;
         }
     }
 }
