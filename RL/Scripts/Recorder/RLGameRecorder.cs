@@ -6,84 +6,54 @@ using System.IO;
 using UFE3D;
 using System.Linq;
 
-using FrameData = RLGameRecord.FrameData;
-using AIMove = ActionSpace.AIMove;
-
-public class RLGameRecorder : GameRecorder
-{
+public class RLGameRecorder : GameRecorder {
     private RLGameRecord record;
     private int frameRoundStarted;
+    private readonly int player = 1;
 
     protected override void InitializeRecord(int frameRoundStarted) {
         this.frameRoundStarted = frameRoundStarted;
 
         record = new RLGameRecord();
-        record.UUID = Guid.NewGuid().ToString();
-        record.date = DateTime.Now.ToString();
+        record.date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
         record.description = UFEExtension.Instance.ExtensionInfo.description;
-        record.frames = new List<FrameData>();
+        record.observations = new List<RLGameRecord.Observation>();
     }
 
     protected override void RecordCurrentFrame(int currentFrame) {
-        var history = UFE.fluxCapacitor.History;
-        var pair = new KeyValuePair<FluxStates, FluxFrameInput>();
+        if(IsDecisionMade()) {
+            var observation = new RLGameRecord.Observation();
+            observation.state.SetValues(player);
+            observation.tensor = observation.state.ToTensor();
+            record.observations.Add(observation);
+        }
+    }
 
-        if (!history.TryGetStateAndInput(currentFrame, out pair)) {
-            Debug.LogError("Failed to get current game state.");
-            return;
+    // returns true if the player did some action in the current frame
+    private bool IsDecisionMade() {
+        var cScript = UFE.GetControlsScript(player);
+        var opCScript = UFE.GetControlsScript(player == 1 ? 2 : 1);
+
+        // if game has not started yet
+        if (UFE.config.lockInputs || UFE.config.lockMovements || cScript == null || opCScript == null) return false;
+
+        var history = RLHelper.Instance.history;
+        var frameBuffer = history.GetFrameBuffer(player);
+
+        // if last move was basic move
+        if (RLUtility.IsBasicMove(frameBuffer[0].aiMove)) {
+            return true;
+        // if the player used different move from the previous frame
+        } else if(frameBuffer[0].aiMove != frameBuffer[1].aiMove) {
+            return true;
         }
 
-        var p1CharacterStateHistory = pair.Key.allCharacterStates.First(elem => elem.playerNum == 1);
-        var p2CharacterStateHistory = pair.Key.allCharacterStates.First(elem => elem.playerNum == 2);
-
-        FrameData frame = new FrameData();
-
-        frame.currentFrame = currentFrame - frameRoundStarted;
-
-        frame.gameState = new RLGameRecord.GameState {
-            normalizedDistance = (float)p1CharacterStateHistory.normalizedDistance
-        };
-
-        frame.p1GameState = new RLGameRecord.CharacterState {
-            life = (int)p1CharacterStateHistory.life,
-            isDown = p1CharacterStateHistory.currentState == PossibleStates.Down,
-            isJumping = (p1CharacterStateHistory.currentState == PossibleStates.BackJump || p1CharacterStateHistory.currentState == PossibleStates.NeutralJump || p1CharacterStateHistory.currentState == PossibleStates.ForwardJump)
-                                && p1CharacterStateHistory.currentSubState != SubStates.Stunned,
-            isBlocking = p1CharacterStateHistory.isBlocking,
-            frameAdvantage = UFEUtility.CalcFrameAdvantage(1),
-        };
-        frame.p2GameState = new RLGameRecord.CharacterState {
-            life = (int)p2CharacterStateHistory.life,
-            isDown = p2CharacterStateHistory.currentState == PossibleStates.Down,
-            isJumping = (p2CharacterStateHistory.currentState == PossibleStates.BackJump || p2CharacterStateHistory.currentState == PossibleStates.NeutralJump || p2CharacterStateHistory.currentState == PossibleStates.ForwardJump)
-                                && p2CharacterStateHistory.currentSubState != SubStates.Stunned,
-            isBlocking = p2CharacterStateHistory.isBlocking,
-            frameAdvantage = UFEUtility.CalcFrameAdvantage(2),
-        };
-
-        frame.p1Action = RLUtility.GetCurrentMove(1).ToString();
-        frame.p2Action = RLUtility.GetCurrentMove(2).ToString();
-
-        StateSpace state = new StateSpace();
-        state.SetValues(1);
-        frame.p1StateVector = state.GetTensor();
-        state.SetValues(2);
-        frame.p2StateVector = state.GetTensor();
-
-        int actionSize = Enum.GetNames(typeof(AIMove)).Length;
-        float[] p1ActionVector = new float[actionSize];
-        float[] p2ActionVector = new float[actionSize];
-        p1ActionVector[(int)RLUtility.GetCurrentMove(1)] = 1;
-        p2ActionVector[(int)RLUtility.GetCurrentMove(2)] = 1;
-        frame.p1ActionVector = p1ActionVector;
-        frame.p2ActionVector = p2ActionVector;
-
-        record.frames.Add(frame);
+        return false;
     }
 
     protected override void SaveRecord(string savePath) {
         string json = JsonUtility.ToJson(record, true);
-        string fileName = $"game_recording_{record.UUID}.json";
+        string fileName = $"game_recording_{record.date}.json";
 
         if (savePath[savePath.Length - 1] != '/') savePath += "/";
 

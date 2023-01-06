@@ -283,7 +283,7 @@ public class ActionSpace: ISpace
         
     }
 
-    public float[] GetTensor() {
+    public float[] ToTensor() {
         return GetTensorFromMove(move);
     }
 

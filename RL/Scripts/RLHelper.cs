@@ -41,7 +41,6 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
             if (repeatBattleButton != null) repeatBattleButton.GetComponent<Button>().onClick.Invoke();
         }
 
-
         var p1 = UFE.GetPlayer1ControlsScript();
         var p2 = UFE.GetPlayer2ControlsScript();
         if(p1 != null) {

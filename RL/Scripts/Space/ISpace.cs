@@ -10,7 +10,7 @@ public interface ISpace
     /// <remarks>
     /// This function should return a tensor that can immediately be used as an input of a model without any processing, such as normalization and trimming.
     /// </remarks>
-    public float[] GetTensor();
+    public float[] ToTensor();
 
     public int GetLength();
 }

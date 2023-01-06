@@ -62,7 +62,7 @@ public class RLAI : BaseAI
 
         // transition to stored move if possible
         if(storedMove is AIMove nextMove) {
-            if(RLUtility.ValidateAIMove(player, nextMove) == 1) {
+            if(RLUtility.ValidateAIMove(player, nextMove) == 1 && inputTick >= ActionSpace.simulatedInput[currentMove].GetLength(0)) {
                 currentMove = nextMove;
                 storedMove = null;
                 inputTick = 0;

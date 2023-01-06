@@ -21,8 +21,7 @@ public class RLAgent : Agent
     // rewards
     private readonly float initialHP = 1000;
     private readonly float maxDamage = 90;
-    private float prevHP;
-    private float prevOpHP;
+    private int lastDecisionFrame = -1;
     private bool episodeEndFlag;
 
     // inference
@@ -88,8 +87,7 @@ public class RLAgent : Agent
     }
 
     public override void OnEpisodeBegin() {
-        prevHP = initialHP;
-        prevOpHP = initialHP;
+
     }
 
     private void FixedUpdate() {
@@ -109,15 +107,13 @@ public class RLAgent : Agent
             var inputDimension = session.InputMetadata[inputName].Dimensions;
             inputDimension[0] = 1; // batch size is 1 during inference
 
-            float[] inputArray = observation.GetTensor();
+            float[] inputArray = observation.ToTensor();
             var inputTensor = new DenseTensor<float>(inputArray, inputDimension);
             modelInputs = new List<NamedOnnxValue> {
                 NamedOnnxValue.CreateFromTensor(inputName, inputTensor),
             };
         } else {
-            sensor.AddObservation(observation.GetTensor());
-
-            Debug.Log(observation.GetLength());
+            sensor.AddObservation(observation.ToTensor());
         }
     }
 
@@ -149,18 +145,26 @@ public class RLAgent : Agent
 
     public float CalculateReward() {
         float reward = 0;
+        var frameBuffer = RLHelper.Instance.history.GetFrameBuffer(rlAI.player);
 
-        float curHp = (float)rlAI.cScript.currentLifePoints;
-        float curOpHp = (float)rlAI.opCScript.currentLifePoints;
-        float hpReward = ((curHp - prevHP) - (curOpHp - prevOpHP)) / maxDamage;
-
-        if(-1 <= hpReward && hpReward <= 1) { // prevent from getting irregular reward value when winning or losing (workaround)
-            reward += hpReward;
+        // all damages taken and dealt from the last decision frame
+        float hitDamageTaken = 0, chipDamageTaken = 0, damageDealt = 0;
+        if(frameBuffer.Count > 0) {
+            for (int i = 0; i < frameBuffer.Count; i++) {
+                if (frameBuffer[i].frame == lastDecisionFrame) break;
+                // todo
+                if(frameBuffer[i].blocking) {
+                    chipDamageTaken += frameBuffer[i].damageTaken / maxDamage;
+                } else {
+                    hitDamageTaken += frameBuffer[i].damageTaken / maxDamage;
+                }
+                damageDealt += frameBuffer[i].damageDealt / maxDamage;
+            }
+            lastDecisionFrame = frameBuffer[0].frame;
         }
-        
+        float hpReward = damageDealt - hitDamageTaken + chipDamageTaken / 2;
 
-        prevHP = curHp;
-        prevOpHP = curOpHp;
+        reward += hpReward;
 
         return reward;
     }

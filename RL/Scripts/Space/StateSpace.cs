@@ -2,9 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using System;
 
 using UFE3D;
 
+using AIMove = ActionSpace.AIMove;
+
+[Serializable]
 public class StateSpace: ISpace
 {
     public SelfState selfState;
@@ -25,13 +29,20 @@ public class StateSpace: ISpace
         if (myCScript == null || opCScript == null) return;
 
         var history = RLHelper.Instance.history;
-        var playerState = player == 1 ? history.p1State : history.p2State;
+        var moveBuffer = history.GetFrameBuffer(player);
+        var playerState = history.GetPlayerState(player);
 
-        // selfState.hp = (float)myCScript.currentLifePoints;
         selfState.isJumping = (myCScript.currentState == PossibleStates.BackJump || myCScript.currentState == PossibleStates.NeutralJump || myCScript.currentState == PossibleStates.ForwardJump)
                                 && myCScript.currentSubState != SubStates.Stunned;
         selfState.frameAdvantage = Mathf.Sign(UFEUtility.CalcFrameAdvantage(player));
-        selfState.lastMove = ActionSpace.GetTensorFromMove(RLUtility.GetCurrentMove(player));
+        var lastMove = AIMove.Neutral;
+        for(int i = 0; i < moveBuffer.Count; i++) {
+            if(moveBuffer[i].aiMove != RLUtility.GetCurrentMove(player)) {
+                lastMove = moveBuffer[i].aiMove;
+                break;
+            }
+        }
+        selfState.lastMove = ActionSpace.GetTensorFromMove(lastMove);
         selfState.movingBackDuration = (float)Mathf.Min(maxMovementFrames, playerState.movingBackFrames) / maxMovementFrames;
         selfState.movingForwardDuration = (float)Mathf.Min(maxMovementFrames, playerState.movingForwardFrames) / maxMovementFrames;
         selfState.crouchingBackDuration = (float)Mathf.Min(maxMovementFrames, playerState.crouchingBackFrames) / maxMovementFrames;
@@ -44,11 +55,11 @@ public class StateSpace: ISpace
         gameState.normalizedDistance = (float)myCScript.normalizedDistance;
     }
 
-    public float[] GetTensor() {
+    public float[] ToTensor() {
         List<float> tensor = new List<float>();
-        tensor.AddRange(selfState.GetTensor());
-        tensor.AddRange(opponentState.GetTensor());
-        tensor.AddRange(gameState.GetTensor());
+        tensor.AddRange(selfState.ToTensor());
+        tensor.AddRange(opponentState.ToTensor());
+        tensor.AddRange(gameState.ToTensor());
 
         return tensor.ToArray();
     }
@@ -57,6 +68,7 @@ public class StateSpace: ISpace
         return selfState.GetLength() + opponentState.GetLength() + gameState.GetLength();
     }
 
+    [Serializable]
     public class SelfState: ISpace {
         public bool isJumping;
         public float frameAdvantage;
@@ -65,7 +77,7 @@ public class StateSpace: ISpace
         public float movingForwardDuration;
         public float crouchingBackDuration;
 
-        public float[] GetTensor() {
+        public float[] ToTensor() {
             List<float> tensor = new List<float>();
             tensor.Add(isJumping ? 1 : 0);
             tensor.Add(frameAdvantage);
@@ -82,12 +94,13 @@ public class StateSpace: ISpace
         }
     }
 
+    [Serializable]
     public class OpponentState: ISpace {
         public bool isDown;
         public bool isJumping;
         public bool isBlocking;
 
-        public float[] GetTensor() {
+        public float[] ToTensor() {
             return new float[] {
                 isDown ? 1 : 0,
                 isJumping ? 1 : 0,
@@ -100,10 +113,11 @@ public class StateSpace: ISpace
         }
     }
 
+    [Serializable]
     public class GameState: ISpace {
         public float normalizedDistance;
 
-        public float[] GetTensor() {
+        public float[] ToTensor() {
             return new float[] {
                 normalizedDistance,
             };
