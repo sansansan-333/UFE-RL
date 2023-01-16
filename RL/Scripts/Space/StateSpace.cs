@@ -6,8 +6,6 @@ using System;
 
 using UFE3D;
 
-using AIMove = ActionSpace.AIMove;
-
 [Serializable]
 public class StateSpace: ISpace
 {
@@ -36,10 +34,14 @@ public class StateSpace: ISpace
                                 && myCScript.currentSubState != SubStates.Stunned;
         selfState.frameAdvantage = Mathf.Sign(UFEUtility.CalcFrameAdvantage(player));
         var lastMove = AIMove.Neutral;
-        for(int i = 0; i < moveBuffer.Count; i++) {
-            if(moveBuffer[i].aiMove != RLUtility.GetCurrentMove(player)) {
-                lastMove = moveBuffer[i].aiMove;
-                break;
+        if (RLUtility.IsBasicMove(moveBuffer[0].aiMove)) {
+            lastMove = moveBuffer[1].aiMove;
+        } else {
+            for (int i = 0; i < moveBuffer.Count; i++) {
+                if (moveBuffer[i].aiMove != RLUtility.GetCurrentMove(player)) {
+                    lastMove = moveBuffer[i].aiMove;
+                    break;
+                }
             }
         }
         selfState.lastMove = ActionSpace.GetTensorFromMove(lastMove);

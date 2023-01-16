@@ -17,14 +17,15 @@ public class RLGameRecorder : GameRecorder {
         record = new RLGameRecord();
         record.date = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
         record.description = UFEExtension.Instance.ExtensionInfo.description;
-        record.observations = new List<RLGameRecord.Observation>();
+        record.observations = new List<RLGameRecord.TimeStep>();
     }
 
     protected override void RecordCurrentFrame(int currentFrame) {
         if(IsDecisionMade()) {
-            var observation = new RLGameRecord.Observation();
+            var observation = new RLGameRecord.TimeStep();
             observation.state.SetValues(player);
-            observation.tensor = observation.state.ToTensor();
+            observation.stateTensor = observation.state.ToTensor();
+            observation.action = ActionSpace.GetTensorFromMove(RLUtility.GetCurrentMove(player));
             record.observations.Add(observation);
         }
     }

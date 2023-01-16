@@ -4,8 +4,6 @@ using UnityEngine;
 using UFE3D;
 using System;
 
-using AIMove = ActionSpace.AIMove;
-
 public class RLUtility
 {
     public static AIMove GetCurrentMove(int player) {

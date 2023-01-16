@@ -5,8 +5,6 @@ using UnityEngine;
 using System.Linq;
 using System;
 
-using AIMove = ActionSpace.AIMove;
-
 // gets input from ALAgent and sends them to UFE 
 public class RLAI : BaseAI
 {

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-using AIMove = ActionSpace.AIMove;
-
 [DefaultExecutionOrder(250)] // between UFE.cs and GameRecorder.cs
 public class GameHistory : MonoBehaviour
 {

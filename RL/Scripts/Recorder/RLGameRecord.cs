@@ -8,11 +8,18 @@ public class RLGameRecord
 {
     public string date;
     public string description;
-    public List<Observation> observations;
+    public List<TimeStep> observations;
 
     [Serializable]
-    public class Observation {
+    public class TimeStep {
         public StateSpace state;
-        public float[] tensor;
+        public float[] stateTensor;
+        public float[] action;
+
+        public TimeStep() {
+            state = new StateSpace();
+            stateTensor = new float[0];
+            action = new float[0];
+        }
     }
 }

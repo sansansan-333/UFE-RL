@@ -7,9 +7,8 @@ using System.Linq;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
+using Unity.MLAgents.SideChannels;
 using UnityEngine;
-
-using AIMove = ActionSpace.AIMove;
 
 public class RLAgent : Agent
 {
@@ -23,6 +22,7 @@ public class RLAgent : Agent
     private readonly float maxDamage = 90;
     private int lastDecisionFrame = -1;
     private bool episodeEndFlag;
+    private bool agentWon = false;
 
     // inference
     private bool inference;
@@ -47,6 +47,7 @@ public class RLAgent : Agent
 
         Academy.Instance.OnEnvironmentReset += EnvironmentReset;
 
+        // inference
         if (Academy.Instance.IsCommunicatorOn) {
             inference = false;
         } else {
@@ -94,6 +95,7 @@ public class RLAgent : Agent
         if (rlAI != null && rlAI.cScript != null && rlAI.opCScript != null && !episodeEndFlag) {
             // episode ends when someone wins
             episodeEndFlag = rlAI.cScript.isDead || rlAI.opCScript.isDead;
+            agentWon = rlAI.opCScript.isDead;
         }
     }
 
@@ -139,6 +141,7 @@ public class RLAgent : Agent
             if (episodeEndFlag) {
                 EndEpisode();
                 episodeEndFlag = false;
+                RLHelper.Instance.statsChannel.SendStatisticalDataToPython(agentWon);
             }
         }
     }

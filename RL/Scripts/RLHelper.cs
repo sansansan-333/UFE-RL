@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using Unity.MLAgents.SideChannels;
+using Unity.MLAgents;
 
 using UFE3D;
 
@@ -14,6 +16,7 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
     private DataLogger logger = new DataLogger();
 
     public GameHistory history;
+    public StatisticsSideChannel statsChannel;
 
     void Awake()
     {
@@ -31,6 +34,10 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
         }
 
         history = gameObject.GetComponent<GameHistory>();
+
+        statsChannel = new StatisticsSideChannel();
+        SideChannelManager.RegisterSideChannel(statsChannel);
+        
     }
 
     void FixedUpdate()
@@ -53,5 +60,11 @@ public class RLHelper : SingletonMonoBehaviour<RLHelper>
         UFE.OnRoundEnds += (ControlsScript winner, ControlsScript loser) => {
             //Debug.Log(winner + " won!");
         };
+    }
+
+    public void OnDestroy() {
+        if (Academy.IsInitialized) {
+            SideChannelManager.UnregisterSideChannel(statsChannel);
+        }
     }
 }
